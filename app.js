@@ -7,7 +7,9 @@ app.use(cors());
 const http = require("http").createServer(app);
 
 const PORT = process.env.PORT || 3001;
-http.listen(PORT, () => {});
+http.listen(PORT, () => {
+  console.log("port", PORT);
+});
 
 const io = require("socket.io")(http, { cors: { origin: "*" } });
 
