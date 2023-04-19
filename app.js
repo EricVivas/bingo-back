@@ -5,7 +5,9 @@ const app = express();
 app.use(cors());
 
 const http = require("http").createServer(app);
-http.listen(3001, () => {});
+
+const PORT = process.env.PORT || 3001;
+http.listen(PORT, () => {});
 
 const io = require("socket.io")(http, { cors: { origin: "*" } });
 
@@ -309,6 +311,8 @@ const onBingo = (socket) => {
 
   if (bingoOk(dataBoard)) {
     dataBoards = dataBoards.map((dataBoard) => {
+      dataBoard.playGame = false;
+      dataBoard.nextNumber = false;
       if (dataBoard.clientId === socket.id) {
         dataBoard.winner = true;
         return dataBoard;
