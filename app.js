@@ -19,6 +19,8 @@ let numbersShown = [];
 let gameStarted = false;
 
 io.on("connection", (socket) => {
+  validationGameStarted(socket);
+
   socket.on("connection-game", (name) => {
     onConnectionGame(socket, name);
   });
@@ -48,6 +50,10 @@ io.on("connection", (socket) => {
   });
 });
 
+const validationGameStarted = (socket) => {
+  if (gameStarted) io.to(socket.id).emit("wait");
+};
+
 const updatePlayers = () => {
   io.emit(
     "update-players",
@@ -63,19 +69,21 @@ const updatePlayers = () => {
 };
 
 const onConnectionGame = (socket, name) => {
-  const board = newBoard(socket);
+  if (!gameStarted) {
+    const board = newBoard(socket);
 
-  dataBoards.push({
-    clientId: socket.id,
-    name,
-    board,
-    markedCells: [],
-    playGame: false,
-    nextNumber: false,
-    winner: false,
-  });
+    dataBoards.push({
+      clientId: socket.id,
+      name,
+      board,
+      markedCells: [],
+      playGame: false,
+      nextNumber: false,
+      winner: false,
+    });
 
-  updatePlayers();
+    updatePlayers();
+  } else validationGameStarted(socket);
 };
 
 const generateBoard = () => {
@@ -248,7 +256,7 @@ const bingoOk = (dataBoard) => {
     ) {
       if (
         dataBoard.markedCells.includes(Number.parseInt(board[j])) ||
-        board[j] === 0
+        Number.parseInt(board[j]) === 0
       )
         accounter++;
     }
@@ -265,7 +273,7 @@ const bingoOk = (dataBoard) => {
     ) {
       if (
         dataBoard.markedCells.includes(Number.parseInt(board[j])) ||
-        board[j] === 0
+        Number.parseInt(board[j]) === 0
       )
         accounter++;
     }
@@ -281,7 +289,7 @@ const bingoOk = (dataBoard) => {
   ) {
     if (
       dataBoard.markedCells.includes(Number.parseInt(board[i])) ||
-      board[i] === 0
+      Number.parseInt(board[i]) === 0
     )
       accounter++;
   }
@@ -296,7 +304,7 @@ const bingoOk = (dataBoard) => {
   ) {
     if (
       dataBoard.markedCells.includes(Number.parseInt(board[i])) ||
-      board[i] === 0
+      Number.parseInt(board[i]) === 0
     )
       accounter++;
   }
@@ -304,6 +312,15 @@ const bingoOk = (dataBoard) => {
   if (accounter === 5) return true;
 
   return dataBoard.markedCells.length === board.length - 1;
+};
+
+const reset = () => {
+  dataBoards = [];
+  numberShown = null;
+  numbersShown = [];
+  gameStarted = false;
+
+  io.emit("reset");
 };
 
 const onBingo = (socket) => {
@@ -321,7 +338,20 @@ const onBingo = (socket) => {
       } else return dataBoard;
     });
 
+    io.to(socket.id).emit("winner");
+
+    const dataB = dataBoards.find((dataBoard) => dataBoard.winner);
+
+    io.emit("end-game", {
+      boardW: dataB.board,
+      markedCellsW: dataB.markedCells,
+    });
+
     updatePlayers();
+
+    setTimeout(() => {
+      reset();
+    }, 20000);
   }
 };
 
@@ -330,5 +360,6 @@ const onDisconnect = (socket) => {
     (dataBoard) => dataBoard.clientId !== socket.id
   );
 
-  updatePlayers();
+  if (!dataBoards.length && gameStarted) reset();
+  else if (dataBoards.length && gameStarted) updatePlayers();
 };
